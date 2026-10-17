@@ -345,6 +345,35 @@
     </div>
   </div>
 
+  <div class="card" id="portfolioLibrary">
+    <h2>作成したポートフォリオを保存</h2>
+    <p class="small">ChatGPTで作成した文章を貼り付けて、タイトル付きで複数保存できます。下書きの段階でも保存できます。</p>
+    <label for="portfolioTitle">ポートフォリオのタイトル</label>
+    <input type="text" id="portfolioTitle" data-portfolio placeholder="例：家族との対話を通じた意思決定支援" />
+    <label for="portfolioTags">タグ（任意）</label>
+    <input type="text" id="portfolioTags" data-portfolio placeholder="例：家族支援、退院支援、提出済み" />
+    <p class="hint">カンマ「,」または読点「、」で区切って入力してください。</p>
+    <label for="portfolioBody">本文（事例・考察・カバーレター・文献など）</label>
+    <textarea id="portfolioBody" data-portfolio style="min-height:300px" placeholder="ChatGPTで作成したポートフォリオをここに貼り付けてください。患者情報は匿名化してください。"></textarea>
+    <p id="portfolioCount" class="hint">本文 0文字</p>
+    <div class="btn-row">
+      <button id="portfolioSave" onclick="savePortfolio()">新しく保存</button>
+      <button class="secondary" onclick="newPortfolio()">別のポートフォリオを書く</button>
+      <button class="secondary" onclick="downloadPortfolio()">テキストで書き出す</button>
+    </div>
+    <p id="portfolioStatus" class="hint" role="status" aria-live="polite">タイトルと本文を入力し、保存してください。</p>
+    <h3 style="margin-top:24px">保存したポートフォリオ</h3>
+    <label for="portfolioTagFilter">タグで絞り込む</label>
+    <select id="portfolioTagFilter" data-portfolio onchange="renderPortfolioLibrary()"><option value="">すべて</option></select>
+    <div id="portfolioList"></div>
+    <div class="btn-row">
+      <button class="secondary" onclick="exportPortfolioLibrary()">保存した全件をファイルに書き出す</button>
+      <button class="light" onclick="document.getElementById('portfolioImport').click()">保存した全件のファイルを読み込む</button>
+    </div>
+    <input type="file" id="portfolioImport" data-portfolio accept=".json,application/json" hidden onchange="importPortfolioLibrary(this)" />
+    <p class="hint">保存先はこの端末・このブラウザ内です。入力内容や保存した文章をサーバーに送信しません。保存は手動です。ブラウザのデータ削除に備え、大切な文章はファイルにも書き出してください。上部の振り返り入力の保存とは別に管理します。</p>
+  </div>
+
 </div>
 
 <script>
@@ -714,7 +743,7 @@ ${reflectionSummary}`;
 
   function clearAllFields() {
     if (!confirm("画面の入力をクリアしますか？保存済みの内容は残ります。")) return;
-    const fields = document.querySelectorAll('input:not([type="file"]), textarea, select');
+    const fields = document.querySelectorAll('input:not([type="file"]):not([data-portfolio]), textarea:not([data-portfolio]), select:not([data-portfolio])');
     fields.forEach(field => {
       if (field.tagName === "SELECT") {
         field.selectedIndex = 0;
@@ -728,7 +757,7 @@ ${reflectionSummary}`;
   }
 
   const STORAGE_KEY = "family-medicine-portfolio-v1";
-  const FIELD_IDS = Array.from(document.querySelectorAll('input:not([type="file"]), textarea, select')).map(field => field.id);
+  const FIELD_IDS = Array.from(document.querySelectorAll('input:not([type="file"]):not([data-portfolio]), textarea:not([data-portfolio]), select:not([data-portfolio])')).map(field => field.id);
 
   function status(message) {
     document.getElementById("saveStatus").textContent = message;
@@ -808,6 +837,191 @@ ${reflectionSummary}`;
   try {
     if (localStorage.getItem(STORAGE_KEY)) status("このブラウザに保存内容があります。「保存内容を読み込む」で再開できます。");
   } catch (error) { status("ブラウザ保存が利用できません。保存ファイルの書き出しをご利用ください。"); }
+</script>
+<script>
+const PORTFOLIO_KEY = 'family-medicine-portfolio-library-v1';
+let editingPortfolioId = null;
+let portfolioBaseline = '';
+const portfolioEl = id => document.getElementById(id);
+const portfolioMessage = message => { portfolioEl('portfolioStatus').textContent = message; };
+function portfolioDraft() {
+  return JSON.stringify([portfolioEl('portfolioTitle').value, portfolioEl('portfolioBody').value, portfolioEl('portfolioTags').value]);
+}
+function portfolioDirty() { return portfolioDraft() !== portfolioBaseline; }
+function validatePortfolioEntries(entries) {
+  if (!Array.isArray(entries) || !entries.every(entry => entry &&
+      typeof entry.id === 'string' && typeof entry.title === 'string' &&
+      typeof entry.body === 'string' && typeof entry.updatedAt === 'string' &&
+      Number.isFinite(Date.parse(entry.updatedAt)) &&
+      (entry.tags === undefined || (Array.isArray(entry.tags) && entry.tags.every(tag => typeof tag === 'string'))))) throw new Error('Invalid library');
+  if (new Set(entries.map(entry => entry.id)).size !== entries.length) throw new Error('Duplicate IDs');
+  return entries;
+}
+function readPortfolioLibrary() {
+  const raw = localStorage.getItem(PORTFOLIO_KEY);
+  return raw === null ? [] : validatePortfolioEntries(JSON.parse(raw));
+}
+function portfolioId() { return crypto.randomUUID(); }
+function portfolioTags() {
+  return [...new Set(portfolioEl('portfolioTags').value.split(/[,、\n]+/).map(tag => tag.trim()).filter(Boolean))];
+}
+function refreshPortfolioEditor() {
+  portfolioEl('portfolioCount').textContent = '本文 ' + Array.from(portfolioEl('portfolioBody').value).length.toLocaleString('ja-JP') + '文字';
+  portfolioEl('portfolioSave').textContent = editingPortfolioId ? '変更を保存' : '新しく保存';
+}
+function resetPortfolioEditor(entry) {
+  editingPortfolioId = entry ? entry.id : null;
+  portfolioEl('portfolioTitle').value = entry ? entry.title : '';
+  portfolioEl('portfolioBody').value = entry ? entry.body : '';
+  portfolioEl('portfolioTags').value = entry ? (entry.tags || []).join('、') : '';
+  portfolioBaseline = portfolioDraft();
+  refreshPortfolioEditor();
+}
+function discardPortfolioDraft() {
+  return !portfolioDirty() || confirm('未保存の変更があります。変更を破棄して進みますか？');
+}
+function newPortfolio() {
+  if (!discardPortfolioDraft()) return;
+  resetPortfolioEditor(null);
+  portfolioMessage('新しいポートフォリオを入力できます。保存済みの文章は一覧に残っています。');
+}
+function savePortfolio() {
+  const title = portfolioEl('portfolioTitle').value.trim();
+  const body = portfolioEl('portfolioBody').value;
+  if (!title || !body.trim()) { portfolioMessage('タイトルと本文を入力してください。'); return; }
+  try {
+    const entries = readPortfolioLibrary();
+    const entry = { id: editingPortfolioId || portfolioId(), title, body, tags:portfolioTags(), updatedAt: new Date().toISOString() };
+    const index = entries.findIndex(item => item.id === entry.id);
+    if (index < 0) entries.push(entry); else entries[index] = entry;
+    localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(entries));
+    resetPortfolioEditor(entry);
+    renderPortfolioLibrary();
+    portfolioMessage('「' + title + '」をこのブラウザに保存しました。');
+  } catch (error) {
+    portfolioMessage('保存できませんでした。入力内容は残っています。「テキストで書き出す」で保存してください。既存の保存データは上書きしていません。');
+  }
+}
+function openPortfolio(id) {
+  try {
+    const entry = readPortfolioLibrary().find(item => item.id === id);
+    if (!entry) { renderPortfolioLibrary(); portfolioMessage('保存内容が見つかりません。一覧を更新しました。'); return; }
+    if (!discardPortfolioDraft()) return;
+    resetPortfolioEditor(entry);
+    portfolioMessage('「' + entry.title + '」を編集中です。編集後は「変更を保存」を押してください。');
+    portfolioEl('portfolioTitle').focus();
+  } catch (error) { portfolioMessage('保存内容を読み込めませんでした。'); }
+}
+function removePortfolio(id) {
+  try {
+    const entries = readPortfolioLibrary();
+    const entry = entries.find(item => item.id === id);
+    if (!entry || !confirm('「' + entry.title + '」を削除しますか？削除は元に戻せません。必要なら先に全件を書き出してください。')) return;
+    localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(entries.filter(item => item.id !== id)));
+    if (editingPortfolioId === id) {
+      editingPortfolioId = null;
+      portfolioBaseline = JSON.stringify(['', '', '']);
+      refreshPortfolioEditor();
+    }
+    renderPortfolioLibrary();
+    portfolioMessage('保存した文章を削除しました。編集中の文章は画面に残っています。');
+  } catch (error) { portfolioMessage('削除できませんでした。保存データは変更していません。'); }
+}
+function renderPortfolioLibrary() {
+  const list = portfolioEl('portfolioList');
+  list.replaceChildren();
+  try {
+    const entries = readPortfolioLibrary().sort((a,b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+    const filter = portfolioEl('portfolioTagFilter');
+    const selected = filter.value;
+    const tags = [...new Set(entries.flatMap(entry => entry.tags || []).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'ja'));
+    filter.replaceChildren();
+    const all = document.createElement('option'); all.value = ''; all.textContent = 'すべて'; filter.appendChild(all);
+    tags.forEach(tag => { const option = document.createElement('option'); option.value = tag; option.textContent = tag; filter.appendChild(option); });
+    filter.value = tags.includes(selected) ? selected : '';
+    if (!entries.length) { list.textContent = '保存したポートフォリオはまだありません。'; return; }
+    const visible = entries.filter(entry => !filter.value || (entry.tags || []).includes(filter.value));
+    visible.forEach(entry => {
+      const row = document.createElement('div');
+      row.style.cssText = 'border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-top:10px;overflow-wrap:anywhere';
+      const title = document.createElement('strong');
+      title.textContent = entry.title;
+      const badges = document.createElement('div'); badges.className = 'badge-row';
+      (entry.tags || []).forEach(tag => { const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = tag; badges.appendChild(badge); });
+      const date = document.createElement('div');
+      date.className = 'hint';
+      date.textContent = '更新：' + new Date(entry.updatedAt).toLocaleString('ja-JP');
+      const actions = document.createElement('div');
+      actions.className = 'btn-row';
+      [['開く・編集', () => openPortfolio(entry.id)], ['テキストで書き出す', () => downloadPortfolio(entry)], ['削除', () => removePortfolio(entry.id)]].forEach(([label, handler]) => {
+        const button = document.createElement('button');
+        button.textContent = label;
+        button.className = label === '削除' ? 'light' : 'secondary';
+        button.addEventListener('click', handler);
+        actions.appendChild(button);
+      });
+      row.append(title, badges, date, actions);
+      list.appendChild(row);
+    });
+  } catch (error) {
+    list.textContent = 'ブラウザの保存内容を読み込めません。ブラウザの設定または保存データをご確認ください。';
+  }
+}
+function downloadPortfolioFile(text, name, type) {
+  const url = URL.createObjectURL(new Blob([text], {type}));
+  const anchor = document.createElement('a');
+  anchor.href = url; anchor.download = name;
+  document.body.appendChild(anchor); anchor.click(); anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function downloadPortfolio(entry) {
+  const title = entry ? entry.title : portfolioEl('portfolioTitle').value.trim();
+  const body = entry ? entry.body : portfolioEl('portfolioBody').value;
+  if (!body.trim()) { portfolioMessage('書き出す本文を入力してください。'); return; }
+  const filename = (title || 'ポートフォリオ').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 80);
+  const tags = entry ? (entry.tags || []) : portfolioTags();
+  downloadPortfolioFile('\uFEFF' + (title || 'ポートフォリオ') + (tags.length ? '\nタグ：' + tags.join('、') : '') + '\n\n' + body, filename + '.txt', 'text/plain;charset=utf-8');
+  portfolioMessage('テキストファイルの書き出しを開始しました。');
+}
+function exportPortfolioLibrary() {
+  try {
+    const entries = readPortfolioLibrary();
+    if (!entries.length) { portfolioMessage('書き出す保存済みポートフォリオがありません。'); return; }
+    const data = {app:'family-medicine-portfolio-library', version:1, entries};
+    downloadPortfolioFile(JSON.stringify(data, null, 2), 'portfolio-library-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json', 'application/json');
+    portfolioMessage(entries.length + '件の保存内容の書き出しを開始しました。画面の未保存の変更は含みません。');
+  } catch (error) { portfolioMessage('保存内容を書き出せませんでした。'); }
+}
+async function importPortfolioLibrary(input) {
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!data || data.app !== 'family-medicine-portfolio-library' || data.version !== 1) throw new Error('Invalid backup');
+    const imported = validatePortfolioEntries(data.entries);
+    if (!imported.length) { portfolioMessage('ファイルにポートフォリオがありません。'); return; }
+    const entries = readPortfolioLibrary();
+    if (!confirm(imported.length + '件を別の保存内容として追加しますか？同じファイルを再度読み込むと重複して追加されます。')) return;
+    const copies = imported.map(entry => ({id:portfolioId(), title:entry.title, body:entry.body, tags:entry.tags || [], updatedAt:entry.updatedAt}));
+    localStorage.setItem(PORTFOLIO_KEY, JSON.stringify([...entries, ...copies]));
+    renderPortfolioLibrary();
+    portfolioMessage(copies.length + '件を追加して保存しました。既存のポートフォリオと編集中の文章は残っています。');
+  } catch (error) { portfolioMessage('読み込めませんでした。このアプリの「保存した全件をファイルに書き出す」で作成したJSONをご利用ください。保存内容は変更していません。'); }
+  finally { input.value = ''; }
+}
+['portfolioTitle', 'portfolioBody', 'portfolioTags'].forEach(id => portfolioEl(id).addEventListener('input', () => {
+  refreshPortfolioEditor();
+  portfolioMessage(portfolioDirty() ? '未保存の変更があります。保存ボタンを押してください。' : '保存内容から変更はありません。');
+}));
+window.addEventListener('beforeunload', event => {
+  if (portfolioDirty()) { event.preventDefault(); event.returnValue = ''; }
+});
+window.addEventListener('storage', event => {
+  if (event.key === PORTFOLIO_KEY || event.key === null) renderPortfolioLibrary();
+});
+resetPortfolioEditor(null);
+renderPortfolioLibrary();
+
 </script>
 </body>
 </html>

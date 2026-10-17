@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>家庭医ポートフォリオ作成アプリ</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f6fb;
+      color: #1f2937;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .sub {
+      margin-top: 0;
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .section-title {
+      padding: 8px 12px;
+      background: #eff6ff;
+      border-radius: 10px;
+      font-weight: 700;
+      color: #1d4ed8;
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin: 14px 0 6px;
+    }
+    input[type="text"],
+    input[type="month"],
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 15px;
+      background: #fff;
+    }
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 15px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+    }
+    button.secondary {
+      background: #475569;
+    }
+    button.light {
+      background: #e5e7eb;
+      color: #111827;
+    }
+    button:hover {
+      opacity: 0.93;
+    }
+    .output {
+      white-space: pre-wrap;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 10px;
+      min-height: 70px;
+    }
+    .hint {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 6px;
+    }
+    .small {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid #c7d2fe;
+    }
+    .copy-note {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 8px;
+    }
+    .sticky-actions {
+      position: sticky;
+      bottom: 12px;
+      z-index: 10;
+      background: rgba(243, 246, 251, 0.88);
+      backdrop-filter: blur(4px);
+      padding: 10px 0 0;
+    }
+    @media (max-width: 820px) {
+      .grid, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+      body {
+        padding: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="card">
+    <h1>家庭医ポートフォリオ作成アプリ</h1>
+    <p class="sub">
+      振り返りを入力すると、ChatGPTに貼るための
+      「追加質問 → 事例の記述 → 考察 → カバーレター → タイトル → 推敲・チェック」
+      までを依頼できるプロンプトを生成します。領域は、入力内容とルーブリックをもとにAIと検討します。
+    </p>
+    <div style="background:#fff7ed;border:1px solid #fed7aa;padding:12px;border-radius:8px;margin-top:10px;">
+<strong>【注意】</strong><br>
+本ツールは家庭医療専門医ポートフォリオ作成支援ツールです。<br>
+患者の個人情報（氏名、住所、学校名、施設名など）は入力しないでください。<br>
+症例は匿名化した内容で入力してください。<br><br>
+本ツールは教育目的の支援ツールであり、
+生成された内容はユーザー自身が確認・修正した上で使用してください。
+</div>
+  </div>
+
+  <div class="card">
+    <h2>入力内容の保存・読み込み</h2>
+    <p class="small">「このブラウザに保存」で入力内容を保存し、次回「保存内容を読み込む」で再開できます。複数の事例を残すときや別の端末へ移すときは、保存ファイルをご利用ください。</p>
+    <div class="btn-row">
+      <button onclick="saveLocal()">このブラウザに保存</button>
+      <button class="secondary" onclick="loadLocal()">保存内容を読み込む</button>
+      <button class="secondary" onclick="exportData()">保存ファイルを書き出す</button>
+      <button class="secondary" onclick="document.getElementById('importFile').click()">保存ファイルを読み込む</button>
+      <button class="light" onclick="deleteLocal()">ブラウザの保存内容を削除</button>
+    </div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden onchange="importData(this)" />
+    <p id="saveStatus" class="hint" role="status" aria-live="polite">まだ保存していません。</p>
+    <p class="hint">ブラウザには1件保存できます。保存はボタンを押した時点の内容です。保存データは外部へ送信しません。ブラウザのデータ削除で消えるため、大切な内容はファイルにも保存してください。</p>
+  </div>
+
+  <div class="card">
+    <div class="section-title">STEP 1｜基本情報</div>
+    <div class="grid">
+      <div>
+        <label>仮タイトル（任意）</label>
+        <input type="text" id="draftTitle" placeholder="例：退院支援を通じて見えた家族と多職種の調整" />
+      </div>
+      <div>
+        <label>テーマ（一言・任意）</label>
+        <input type="text" id="theme" placeholder="例：生活を見据えた退院支援" />
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label>事例開始年月（任意）</label>
+        <input type="month" id="startMonth" />
+      </div>
+      <div>
+        <label>事例終了年月（任意）</label>
+        <input type="month" id="endMonth" />
+      </div>
+    </div>
+
+    <label>領域（希望があれば選択・未選択でも可）</label>
+    <select id="domain">
+      <option value="">未選択</option>
+    </select>
+    <div class="hint">
+      領域が分からない場合は未選択で進めてください。生成したプロンプトをChatGPTに貼ると、ルーブリックと事例の対応をもとにAIが候補と理由を示します。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">STEP 2｜簡易振り返り</div>
+
+    <label>① どんな出来事だった？</label>
+    <textarea id="event" placeholder="何が起こったか、何を経験したか"></textarea>
+
+    <label>② その時の感情は？</label>
+    <textarea id="emotion" placeholder="迷い、不安、葛藤、納得感、達成感など"></textarea>
+
+    <label>③ うまくいったことは？ 工夫や成功の要因は？</label>
+    <textarea id="good" placeholder="実践の中で良かった点"></textarea>
+
+    <label>④ うまくいかなかったことは？</label>
+    <textarea id="bad" placeholder="課題、限界、見落とし、難しさ"></textarea>
+
+    <label>⑤ こうすればよかったと思うこと、改善したいことは？</label>
+    <textarea id="improve" placeholder="後から振り返っての改善点"></textarea>
+
+    <label>⑥ Next step｜どんな状況を目指す？ そのためにできることは？</label>
+    <textarea id="next" placeholder="次に同様の事例があった時の目標と行動"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="section-title">STEP 3｜深掘りの考察材料</div>
+
+    <label>この事例のキーワードや重要なポイントは何か？</label>
+    <textarea id="keywords" placeholder="例：患者中心、家族支援、多職種連携、SDH、ACP、リハビリ、未分化など"></textarea>
+
+    <label>なぜ他の事例と異なるのか？</label>
+    <textarea id="difference" placeholder="この事例ならではの特徴"></textarea>
+
+    <label>他者とディスカッションして分かったこと</label>
+    <textarea id="discussion" placeholder="指導医、看護師、MSW、リハ職、家族などとの対話から得たこと"></textarea>
+
+    <label>事例に関する疑問</label>
+    <textarea id="questions" placeholder="当時の疑問、今なお残る問い"></textarea>
+
+    <label>教科書や文献で学んだこと / この事例ではどうだったか</label>
+    <div class="hint"><a href="https://maemika.github.io/clinical-question-prompt-maker/" target="_blank" rel="noopener noreferrer">文献検索アプリを開く（新しいタブ）</a></div>
+    <textarea id="literature" placeholder="文献の知見と、この事例との共通点・相違点"></textarea>
+
+    <label>実践の中で、どこが総合診療医として優れたポイントだったか？</label>
+    <textarea id="gpStrength" placeholder="統合的視点、継続性、文脈理解、意思決定支援など"></textarea>
+
+    <label>事例全体を通して気づいたこと、工夫</label>
+    <textarea id="notice" placeholder="俯瞰して見えたこと"></textarea>
+
+    <label>どのような枠組みがあったか？ この事例に適応できるか？</label>
+    <textarea id="framework" placeholder="例：BPS、ICF、PCCM、COPC、臨床倫理4分割法、家族図など"></textarea>
+
+    <label>この事例・経験はあなたにどんなメッセージ・意味を与えたか？</label>
+    <textarea id="meaningSelf" placeholder="自分にとっての意味"></textarea>
+
+    <label>この事例・経験は社会にとってどういう意味があるか？</label>
+    <textarea id="meaningSocial" placeholder="地域、制度、アクセス、教育などの観点"></textarea>
+
+    <label>この事例・経験を通じて、どんな課題が見つかったか？</label>
+    <textarea id="issues" placeholder="個人レベル・システムレベルの課題"></textarea>
+
+    <label>もし「事例を経験する前の自分」に会ったら、どうアドバイスするか？</label>
+    <textarea id="advicePast" placeholder="事前に知っておきたかったこと"></textarea>
+
+    <label>この事例・経験を通じてどう成長したか？</label>
+    <textarea id="growth" placeholder="知識、態度、行動の変化"></textarea>
+
+    <label>この事例に対して、今どんなことができるか？</label>
+    <textarea id="canNow" placeholder="今後のフォロー、共有、学習など"></textarea>
+
+    <label>個人・医師としてこれからどう行動を変えるか？</label>
+    <textarea id="changeAction" placeholder="今後の実践目標"></textarea>
+
+    <label>個人・医師として社会にどのように働きかけていくか？</label>
+    <textarea id="socialAction" placeholder="教育、地域、仕組みづくりなど"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="section-title">STEP 4｜参考文献メモ（任意）</div>
+    <div class="hint"><a href="https://maemika.github.io/clinical-question-prompt-maker/" target="_blank" rel="noopener noreferrer">文献検索アプリを開く（新しいタブ）</a></div>
+    <textarea id="references" placeholder="1. 著者名．論文名．誌名．年；巻（号）：頁-頁．
+2. ..."></textarea>
+    <div class="hint">後で文献番号 ※1、※2 を本文に入れる前提でメモしておけます。</div>
+  </div>
+
+  <div class="card sticky-actions">
+    <div class="btn-row">
+      <button onclick="generateAll()">AIに渡すプロンプトを生成</button>
+      <button class="secondary" onclick="copySection('promptOutput')">プロンプトをコピー</button>
+      <button class="secondary" onclick="copySection('reflectionOutput')">振り返りまとめをコピー</button>
+      <button class="light" onclick="clearAllFields()">入力をクリア</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>振り返りまとめ</h2>
+    <div id="reflectionOutput" class="output"></div>
+  </div>
+
+  <div class="card">
+    <h2>AIによる領域の検討</h2>
+    <p class="small">生成したプロンプトをChatGPTに貼り付けてください。AIがルーブリックとの対応、候補の理由、不足情報を整理します。</p>
+    <p class="hint">プロンプトには既存アプリに収録されていたルーブリックの要約を含めます。正式な評価基準の全文ではありません。正式なルーブリックがある場合はChatGPTに一緒に渡してください。</p>
+  </div>
+
+  <div class="card">
+    <h2>ChatGPTに渡すプロンプト</h2>
+    <div id="promptOutput" class="output"></div>
+    <div class="btn-row">
+      <button class="secondary" onclick="copySection('promptOutput')">プロンプトをコピー</button>
+    </div>
+    <div class="copy-note">
+      これをそのままChatGPTに貼ると、追加質問から推敲・チェックまで順に進められる想定です。
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const DOMAIN_DATA = [
+    {
+      id: "1",
+      name: "1 未分化な健康問題",
+      rubric: "不確実性を受け容れつつ、診断がつかない・方針が定まらない状況でも継続的に診療し、患者がある程度満足できるケアにつなげる領域。"
+    },
+    {
+      id: "2",
+      name: "2 予防医学と健康増進",
+      rubric: "1〜3次予防や健康増進を考慮し、長期的視点で診療・ケアを計画、実施、再評価する領域。"
+    },
+    {
+      id: "3",
+      name: "3 慢性疾患のケア",
+      rubric: "慢性疾患患者に対し、コミュニティや保健システムも考慮しつつ、自己管理能力や意思決定を支援する領域。"
+    },
+    {
+      id: "4",
+      name: "4 長期的な全人的関係に基づくケア",
+      rubric: "longitudinality のある関係の中で生じた変化に気づき、それをケアの最適化につなげる領域。"
+    },
+    {
+      id: "5",
+      name: "5 患者中心の医療",
+      rubric: "患者との関係性を構築しつつ、疾患と病いの経験を探り、BPSも踏まえた全人的評価から方針につなげる領域。"
+    },
+    {
+      id: "6",
+      name: "6 家族志向のケア",
+      rubric: "家族関係、ライフイベント、家族システム全体を踏まえて診療方針を考える領域。"
+    },
+    {
+      id: "7",
+      name: "7 地域志向のプライマリ・ケア",
+      rubric: "コミュニティ集団を定義し、その特性と保健上の問題を明らかにし、改善活動と評価につなげる領域。"
+    },
+    {
+      id: "8",
+      name: "8 障害とリハビリテーション",
+      rubric: "ICFに基づいて患者像を評価し、リハビリ目標設定・処方・介入評価を行う領域。"
+    },
+    {
+      id: "9",
+      name: "9 EBMの実践",
+      rubric: "疑問の定式化、エビデンス検索、批判的吟味、患者への適用、評価までを行う領域。"
+    },
+    {
+      id: "10",
+      name: "10 メンタルヘルス",
+      rubric: "診断基準や心理社会的背景を踏まえ、治療・マネジメント・経過評価を行う領域。"
+    },
+    {
+      id: "11",
+      name: "11 健康の社会的決定要因とアドボカシーおよびアクセス",
+      rubric: "SDHにより健康を脅かされている患者・集団・地域で、格差解消やアクセス改善への働きかけを考える領域。"
+    },
+    {
+      id: "12a",
+      name: "12a 複雑困難事例のケア",
+      rubric: "問題の複雑度が高い患者に対し、複数専門職を巻き込み、長期的視点で最適なケアを考える領域。"
+    },
+    {
+      id: "12b",
+      name: "12b 多疾患併存",
+      rubric: "複数疾患が絡み合う患者で、主治医として複数施設・専門職の連携をマネジメントする領域。"
+    },
+    {
+      id: "13a",
+      name: "13a 統合されたケア",
+      rubric: "複数の診療・介護・福祉施設や専門職をまたいで、システム全体に視点を向けた診療・ケアにつなげる領域。"
+    },
+    {
+      id: "13b",
+      name: "13b チーム医療・ケアの調整や移行",
+      rubric: "多職種協働や地域医療連携が必要な患者のケアや移行の課題を明確化し、改善につなげる領域。"
+    },
+    {
+      id: "14a",
+      name: "14a 高いプロフェッショナリズムに基づく行動",
+      rubric: "患者中心性、利他主義、自己研鑽などのプロフェッショナリズムに関する課題を省察し改善案を示す領域。"
+    },
+    {
+      id: "14b",
+      name: "14b 倫理的に困難な意思決定を伴う事例のケア",
+      rubric: "生命倫理・臨床倫理上の葛藤を、枠組みに沿って情報収集し妥当な意思決定につなげる領域。"
+    },
+    {
+      id: "15a",
+      name: "15a セクシャルヘルス / 性を考慮したケア",
+      rubric: "生物学的性差、性自認、性的指向、ライフステージや社会的役割を踏まえたケアを行う領域。"
+    },
+    {
+      id: "15b",
+      name: "15b 思春期のケア",
+      rubric: "思春期特有の発達、関係性、コミュニケーション課題を踏まえた診療・ケアを行う領域。"
+    },
+    {
+      id: "16a",
+      name: "16a 緩和ケア",
+      rubric: "身体的・心理社会的・スピリチュアルな苦痛を評価・治療し、患者と家族のQOL改善につなげる領域。"
+    },
+    {
+      id: "16b",
+      name: "16b 人生の最終段階におけるケア",
+      rubric: "本人の意思を尊重した人生の最終段階のケアを考える領域。"
+    }
+  ];
+
+
+  function initDomainOptions() {
+    const select = document.getElementById("domain");
+    DOMAIN_DATA.forEach(domain => {
+      const option = document.createElement("option");
+      option.value = domain.id;
+      option.textContent = domain.name;
+      select.appendChild(option);
+    });
+  }
+
+  function getDomainById(id) {
+    return DOMAIN_DATA.find(d => d.id === id);
+  }
+
+  function getValue(id) {
+    return document.getElementById(id).value.trim();
+  }
+
+  function generateReflectionSummary(selectedDomain) {
+    const draftTitle = getValue("draftTitle");
+    const theme = getValue("theme");
+    const startMonth = getValue("startMonth");
+    const endMonth = getValue("endMonth");
+
+    const event = getValue("event");
+    const emotion = getValue("emotion");
+    const good = getValue("good");
+    const bad = getValue("bad");
+    const improve = getValue("improve");
+    const next = getValue("next");
+
+    const keywords = getValue("keywords");
+    const difference = getValue("difference");
+    const discussion = getValue("discussion");
+    const questions = getValue("questions");
+    const literature = getValue("literature");
+    const gpStrength = getValue("gpStrength");
+    const notice = getValue("notice");
+    const framework = getValue("framework");
+    const meaningSelf = getValue("meaningSelf");
+    const meaningSocial = getValue("meaningSocial");
+    const issues = getValue("issues");
+    const advicePast = getValue("advicePast");
+    const growth = getValue("growth");
+    const canNow = getValue("canNow");
+    const changeAction = getValue("changeAction");
+    const socialAction = getValue("socialAction");
+    const references = getValue("references");
+
+    const domainText = selectedDomain
+      ? selectedDomain.name
+      : "未選択（AIと検討）";
+
+    return `【基本情報】
+仮タイトル：${draftTitle || "未入力"}
+テーマ：${theme || "未入力"}
+事例開始年月：${startMonth || "未入力"}
+事例終了年月：${endMonth || "未入力"}
+領域：${domainText}
+
+【簡易振り返り】
+① どんな出来事だった？
+${event || "未入力"}
+
+② その時の感情は？
+${emotion || "未入力"}
+
+③ うまくいったことは？ 工夫や成功の要因は？
+${good || "未入力"}
+
+④ うまくいかなかったことは？
+${bad || "未入力"}
+
+⑤ こうすればよかったと思うこと、改善したいことは？
+${improve || "未入力"}
+
+⑥ Next step｜どんな状況を目指す？ そのためにできることは？
+${next || "未入力"}
+
+【深掘りの考察材料】
+この事例のキーワードや重要なポイント
+${keywords || "未入力"}
+
+なぜ他の事例と異なるのか
+${difference || "未入力"}
+
+他者とディスカッションして分かったこと
+${discussion || "未入力"}
+
+事例に関する疑問
+${questions || "未入力"}
+
+教科書や文献で学んだこと / この事例ではどうだったか
+${literature || "未入力"}
+
+総合診療医として優れたポイント
+${gpStrength || "未入力"}
+
+事例全体を通して気づいたこと、工夫
+${notice || "未入力"}
+
+適応できる枠組み
+${framework || "未入力"}
+
+自分にとっての意味
+${meaningSelf || "未入力"}
+
+社会にとっての意味
+${meaningSocial || "未入力"}
+
+見つかった課題
+${issues || "未入力"}
+
+事例を経験する前の自分へのアドバイス
+${advicePast || "未入力"}
+
+この経験を通じた成長
+${growth || "未入力"}
+
+今この事例に対してできること
+${canNow || "未入力"}
+
+今後どう行動を変えるか
+${changeAction || "未入力"}
+
+社会にどう働きかけていくか
+${socialAction || "未入力"}
+
+【参考文献メモ】
+${references || "未入力"}`;
+  }
+
+  function generatePrompt(selectedDomain) {
+    const reflectionSummary = generateReflectionSummary(selectedDomain);
+    const selectedDomainText = selectedDomain ? selectedDomain.name : "未選択";
+    const rubricText = DOMAIN_DATA.map(domain => `${domain.name}\n${domain.rubric}`).join("\n\n");
+
+    return `あなたは家庭医療専門医ポートフォリオ作成を支援する、経験豊富な家庭医療指導医です。
+以下の振り返り内容と作成マニュアルに基づいて、家庭医療専門医ポートフォリオ作成を段階的に支援してください。
+
+【大前提】
+- まず「考察の切り口」を明確にし、その切り口を踏まえて事例の記述を書く流れを重視してください。
+- 単なる作文ではなく、家庭医療専門医ポートフォリオとしての構成・教育的価値・実践の質が伝わる文章を目指してください。
+- 記載は日本語で行ってください。
+- 匿名化に配慮してください。
+- 文字数は最終的に「事例の記述＋考察」で1600〜2800字を目安にしてください。
+- 略語は初出時に必要ならスペルアウトしてください。
+- 文献は最大5件程度を想定し、本文中に※1、※2のように入れられる形を意識してください。
+
+【現在の領域情報】
+ユーザー選択領域：${selectedDomainText}
+ユーザーの選択は希望として扱い、適合性をルーブリックで検討してください。
+
+【領域別ルーブリック（既存アプリ収録の要約）】
+以下は正式な評価基準の全文ではありません。ユーザーが正式なルーブリックを添付した場合は、そちらを優先してください。
+
+${rubricText}
+
+【作成マニュアル上のポイント】
+- まず簡易に振り返る
+- 深掘りの問いに答える
+- 考察を書く
+- その考察の切り口で事例の記述を書く
+- その後、数行のまとめ、カバーレター、タイトルを考える
+- 最後に推敲し、チェックポイントを確認する
+
+【あなたにしてほしい手順】
+STEP1
+まず、この振り返りから考えられる「考察の中心テーマ」と「この事例で押し出すべき学び・論点」を整理してください。
+その際、
+- ルーブリックに照らした有力な領域候補を1〜3個
+- 各候補のルーブリックと、対応する具体的な事例の記述
+- その候補を支持する理由と、まだ確認できていない評価項目
+- 一番書きやすそうな切り口
+を示してください。
+単語の出現数で判定せず、実践内容・省察・学びがルーブリックにどう対応するかを評価してください。記載のない実践を推測で補わず、情報が不足する場合は判定を保留し、追加質問に含めてください。最終的な領域はユーザーと確認してください。
+
+STEP2
+次に、事例の記述を書くために不足している情報を、質問形式で整理してください。
+質問は多すぎないように、優先順位の高いものから10個以内でお願いします。
+マニュアルを参考に、特に以下を意識してください。
+- どんな出来事だったか
+- 必要なら家族・地域・社会背景
+- 時間経過
+- その時の感情
+- 対応の工夫とその根拠
+- 実践内容の質が伝わる情報
+質問は、ユーザーがそのまま答えやすい形で簡潔にしてください。
+
+STEP3
+ユーザーがSTEP2の質問に答えたら、その回答も踏まえて
+1. 事例の選択理由
+2. 事例の記述
+3. 考察
+を作成してください。
+ここでは、考察を先に意識して、そこに沿うように事例の記述を構成してください。
+
+STEP4
+その後、
+- 数行のまとめ
+- カバーレター文案
+- タイトル候補を3案
+作成してください。
+
+STEP5
+最後に全体を見直して、
+- 事例の記述＋考察の文字数が1600〜2800字に収まるよう調整
+- 冗長表現の削減
+- 論理の流れの明確化
+- 主語述語の整理
+- 総合診療らしさの補強
+を行ってください。
+
+STEP6
+最後に、以下のチェックポイントで自己点検してください。
+- 匿名化できているか
+- 領域と内容の整合性があるか
+- 実践した内容の質が伝わるか
+- うまくいったことに適切に焦点が当たっているか
+- 医学的に不自然でないか
+- 構成は論理的か
+- 1段落1トピックになっているか
+- 文献の使い方が不自然でないか
+- 主張と根拠が対応しているか
+- 次の実践改善につながる内容になっているか
+
+【出力のしかた】
+- まずSTEP1の整理を提示
+- 次にSTEP2の追加質問だけを提示して、一度止まってください
+- ユーザーの追加回答を受け取った後に、STEP3〜STEP6をまとめて実行してください
+
+【振り返り内容】
+${reflectionSummary}`;
+  }
+
+  function generateAll() {
+    const selectedDomain = getDomainById(getValue("domain"));
+    const reflectionSummary = generateReflectionSummary(selectedDomain);
+    const prompt = generatePrompt(selectedDomain);
+
+    document.getElementById("reflectionOutput").innerText = reflectionSummary;
+    document.getElementById("promptOutput").innerText = prompt;
+  }
+
+  function copySection(id) {
+    const text = document.getElementById(id).innerText;
+    if (!text) {
+      alert("コピーする内容がありません。");
+      return;
+    }
+    navigator.clipboard.writeText(text)
+      .then(() => alert("コピーしました。"))
+      .catch(() => alert("コピーに失敗しました。"));
+  }
+
+  function clearAllFields() {
+    if (!confirm("画面の入力をクリアしますか？保存済みの内容は残ります。")) return;
+    const fields = document.querySelectorAll('input:not([type="file"]), textarea, select');
+    fields.forEach(field => {
+      if (field.tagName === "SELECT") {
+        field.selectedIndex = 0;
+      } else {
+        field.value = "";
+      }
+    });
+
+    document.getElementById("reflectionOutput").innerText = "";
+    document.getElementById("promptOutput").innerText = "";
+  }
+
+  const STORAGE_KEY = "family-medicine-portfolio-v1";
+  const FIELD_IDS = Array.from(document.querySelectorAll('input:not([type="file"]), textarea, select')).map(field => field.id);
+
+  function status(message) {
+    document.getElementById("saveStatus").textContent = message;
+  }
+
+  function collectData() {
+    return { app: "family-medicine-portfolio", version: 1, savedAt: new Date().toISOString(),
+      fields: Object.fromEntries(FIELD_IDS.map(id => [id, document.getElementById(id).value])) };
+  }
+
+  function validateData(data) {
+    if (!data || data.app !== "family-medicine-portfolio" || data.version !== 1 ||
+        !data.fields || typeof data.fields !== "object" ||
+        !FIELD_IDS.every(id => typeof data.fields[id] === "string")) {
+      throw new Error("このアプリの保存ファイルではないか、データが壊れています。");
+    }
+    if (data.fields.domain && !getDomainById(data.fields.domain)) throw new Error("領域の値が不正です。");
+    return data;
+  }
+
+  function restoreData(data) {
+    validateData(data);
+    if (!confirm("現在の入力を保存内容に置き換えますか？")) return false;
+    FIELD_IDS.forEach(id => { document.getElementById(id).value = data.fields[id]; });
+    generateAll();
+    return true;
+  }
+
+  function saveLocal() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(collectData()));
+      status("このブラウザに保存しました（" + new Date().toLocaleString("ja-JP") + "）。");
+    } catch (error) {
+      status("ブラウザに保存できませんでした。保存ファイルの書き出しをご利用ください。");
+    }
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) { status("このブラウザには保存内容がありません。"); return; }
+      if (restoreData(JSON.parse(raw))) status("ブラウザの保存内容を読み込みました。");
+    } catch (error) { status("保存内容を読み込めませんでした。ブラウザの設定または保存データをご確認ください。"); }
+  }
+
+  function deleteLocal() {
+    if (!confirm("このブラウザの保存内容を削除しますか？画面の入力は残ります。")) return;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      status("ブラウザの保存内容を削除しました。");
+    } catch (error) { status("保存内容を削除できませんでした。ブラウザの設定をご確認ください。"); }
+  }
+
+  function exportData() {
+    const blob = new Blob([JSON.stringify(collectData(), null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "portfolio-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status("保存ファイルの書き出しを開始しました。");
+  }
+
+  async function importData(input) {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      if (restoreData(JSON.parse(await file.text()))) status("保存ファイルを読み込みました。ブラウザにも残す場合は保存ボタンを押してください。");
+    } catch (error) { status("保存ファイルを読み込めませんでした。このアプリで書き出したJSONファイルを選んでください。"); }
+    finally { input.value = ""; }
+  }
+
+  initDomainOptions();
+  try {
+    if (localStorage.getItem(STORAGE_KEY)) status("このブラウザに保存内容があります。「保存内容を読み込む」で再開できます。");
+  } catch (error) { status("ブラウザ保存が利用できません。保存ファイルの書き出しをご利用ください。"); }
+</script>
+</body>
+</html>

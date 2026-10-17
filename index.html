@@ -351,7 +351,12 @@
     <p class="small">ChatGPTで作成した文章を貼り付けて、タイトル付きで複数保存できます。下書きの段階でも保存できます。</p>
     <label for="portfolioTitle">ポートフォリオのタイトル</label>
     <input type="text" id="portfolioTitle" data-portfolio placeholder="例：家族との対話を通じた意思決定支援" />
-    <label for="portfolioTags">タグ（任意）</label>
+    <div class="grid">
+      <div><label for="portfolioDomainTag">領域タグを追加</label><select id="portfolioDomainTag" data-portfolio onchange="addPortfolioTag(this)"><option value="">領域を選択</option></select></div>
+      <div><label for="portfolioEmotionTag">感情タグを追加</label><select id="portfolioEmotionTag" data-portfolio onchange="addPortfolioTag(this)"><option value="">感情を選択</option></select></div>
+    </div>
+    <p class="hint">選ぶと下のタグ欄に追加されます。繰り返し選んで複数付けられます。タグを外すときは下の欄から削除してください。</p>
+    <label for="portfolioTags">選択したタグ・自由タグ（任意）</label>
     <input type="text" id="portfolioTags" data-portfolio placeholder="例：家族支援、退院支援、提出済み" />
     <p class="hint">カンマ「,」または読点「、」で区切って入力してください。</p>
     <label for="portfolioBody">本文（事例・考察・カバーレター・文献など）</label>
@@ -364,7 +369,12 @@
     </div>
     <p id="portfolioStatus" class="hint" role="status" aria-live="polite">タイトルと本文を入力し、保存してください。</p>
     <h3 style="margin-top:24px">保存したポートフォリオ</h3>
-    <label for="portfolioTagFilter">タグで絞り込む</label>
+    <div class="grid">
+      <div><label for="portfolioDomainFilter">領域で絞り込む</label><select id="portfolioDomainFilter" data-portfolio onchange="renderPortfolioLibrary()"><option value="">すべての領域</option></select></div>
+      <div><label for="portfolioEmotionFilter">感情で絞り込む</label><select id="portfolioEmotionFilter" data-portfolio onchange="renderPortfolioLibrary()"><option value="">すべての感情</option></select></div>
+    </div>
+    <p class="hint">領域と感情を両方選ぶと、その両方のタグを持つポートフォリオを表示します。</p>
+    <label for="portfolioTagFilter">すべてのタグで絞り込む</label>
     <select id="portfolioTagFilter" data-portfolio onchange="renderPortfolioLibrary()"><option value="">すべて</option></select>
     <div id="portfolioList"></div>
     <div class="btn-row">
@@ -845,6 +855,23 @@ let editingPortfolioId = null;
 let portfolioBaseline = '';
 const portfolioEl = id => document.getElementById(id);
 const portfolioMessage = message => { portfolioEl('portfolioStatus').textContent = message; };
+const EMOTION_TAGS = ['喜び', '怒り', '悲しみ', '楽しさ', '驚き', 'もやもや', '不安', '安心', '戸惑い', '達成感'];
+function initPortfolioTagOptions() {
+  const domains = DOMAIN_DATA.map(domain => ['領域：' + domain.name, domain.name]);
+  const emotions = EMOTION_TAGS.map(emotion => ['感情：' + emotion, emotion]);
+  [['portfolioDomainTag', domains], ['portfolioDomainFilter', domains], ['portfolioEmotionTag', emotions], ['portfolioEmotionFilter', emotions]].forEach(([id, values]) => {
+    values.forEach(([value, label]) => {
+      const option = document.createElement('option'); option.value = value; option.textContent = label;
+      portfolioEl(id).appendChild(option);
+    });
+  });
+}
+function addPortfolioTag(select) {
+  if (!select.value) return;
+  portfolioEl('portfolioTags').value = [...new Set([...portfolioTags(), select.value])].join('、');
+  select.value = '';
+  portfolioMessage('タグを追加しました。保存ボタンを押して反映してください。');
+}
 function portfolioDraft() {
   return JSON.stringify([portfolioEl('portfolioTitle').value, portfolioEl('portfolioBody').value, portfolioEl('portfolioTags').value]);
 }
@@ -875,6 +902,8 @@ function resetPortfolioEditor(entry) {
   portfolioEl('portfolioTitle').value = entry ? entry.title : '';
   portfolioEl('portfolioBody').value = entry ? entry.body : '';
   portfolioEl('portfolioTags').value = entry ? (entry.tags || []).join('、') : '';
+  portfolioEl('portfolioDomainTag').value = '';
+  portfolioEl('portfolioEmotionTag').value = '';
   portfolioBaseline = portfolioDraft();
   refreshPortfolioEditor();
 }
@@ -941,7 +970,10 @@ function renderPortfolioLibrary() {
     tags.forEach(tag => { const option = document.createElement('option'); option.value = tag; option.textContent = tag; filter.appendChild(option); });
     filter.value = tags.includes(selected) ? selected : '';
     if (!entries.length) { list.textContent = '保存したポートフォリオはまだありません。'; return; }
-    const visible = entries.filter(entry => !filter.value || (entry.tags || []).includes(filter.value));
+    const domainFilter = portfolioEl('portfolioDomainFilter').value;
+    const emotionFilter = portfolioEl('portfolioEmotionFilter').value;
+    const visible = entries.filter(entry => [filter.value, domainFilter, emotionFilter].every(tag => !tag || (entry.tags || []).includes(tag)));
+    if (!visible.length) list.textContent = '条件に合うポートフォリオはありません。絞り込みを「すべて」に戻すと全件表示できます。';
     visible.forEach(entry => {
       const row = document.createElement('div');
       row.style.cssText = 'border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-top:10px;overflow-wrap:anywhere';
@@ -1021,6 +1053,7 @@ window.addEventListener('storage', event => {
   if (event.key === PORTFOLIO_KEY || event.key === null) renderPortfolioLibrary();
 });
 resetPortfolioEditor(null);
+initPortfolioTagOptions();
 renderPortfolioLibrary();
 
 </script>
